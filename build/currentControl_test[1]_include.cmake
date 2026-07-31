@@ -1,0 +1,5 @@
+if(EXISTS "D:/Matimar/SimpleCurrentControlWorkspace/build/currentControl_test[1]_tests.cmake")
+  include("D:/Matimar/SimpleCurrentControlWorkspace/build/currentControl_test[1]_tests.cmake")
+else()
+  add_test(currentControl_test_NOT_BUILT currentControl_test_NOT_BUILT)
+endif()
