@@ -1,3 +1,4 @@
 # ninja log v7
-36	968	8071913520000000	CMakeFiles/currentControl.dir/CurrentControl/simpleCurrentControl.cpp.obj	b298eae5200f5c33
-76	8357	8071913520000000	CMakeFiles/currentControl_test.dir/UnitTest/currentControl_test.cpp.obj	6b6153e948a86317
+3	23	8072021367578881	clean	4b7a9ec6ee23bafa
+3	264	8072021368069223	CMakeFiles/currentControl.dir/CurrentControl/simpleCurrentControl.cpp.obj	5f8de8c47292dac8
+24	928	8072021368278093	CMakeFiles/currentControl_test.dir/UnitTest/currentControl_test.cpp.obj	73c9d5d73f70be4
