@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "..\CurrentControl\simpleCurrentControl.h"
 
 // Sample function to test
 int add(int a, int b) {
@@ -12,4 +13,15 @@ TEST(currentControl_test, TestAdd) {
 
 TEST(currentControl_test, AnotherTest) {
     EXPECT_TRUE(true);
+}
+
+TEST(currentControl_test, FailingTest) {
+    EXPECT_EQ(add(2, 2), 5); // This test is expected to fail
+}
+
+// Test for currentControlLoop function
+ParkAndClarke_t testStruct;
+
+TEST(currentControl_test, Test1) {
+      currentControlLoop (0, &testStruct, CC_MODE_RESET);
 }

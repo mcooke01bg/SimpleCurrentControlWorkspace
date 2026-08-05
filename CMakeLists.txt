@@ -7,15 +7,24 @@ set(CMAKE_TOOLCHAIN_FILE "C:/msys64/mingw64/bin/vcpkg/scripts/buildsystems/vcpkg
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-# force linking with console
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mconsole")
 
-add_executable(currentControl CurrentControl/simpleCurrentControl.cpp)
+# force linking with console
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mconsole")
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+# set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+add_library(currentControl)
+target_sources(currentControl 
+    PRIVATE CurrentControl/simpleCurrentControl.cpp
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS CurrentControl
+        FILES CurrentControl/simpleCurrentControl.h)
 
 find_package(GTest CONFIG REQUIRED)
 
 add_executable(currentControl_test UnitTest/currentControl_test.cpp)
-target_link_libraries(currentControl_test PRIVATE GTest::gtest GTest::gtest_main)
+target_link_libraries(currentControl_test PRIVATE GTest::gtest GTest::gtest_main currentControl)
 
 enable_testing()
 #add_test(NAME currentControl_test COMMAND currentControl_test)
