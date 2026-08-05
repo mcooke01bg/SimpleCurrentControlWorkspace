@@ -1,5 +1,0 @@
-if(EXISTS "C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/currentControl_test[1]_tests.cmake")
-  include("C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/currentControl_test[1]_tests.cmake")
-else()
-  add_test(currentControl_test_NOT_BUILT currentControl_test_NOT_BUILT)
-endif()

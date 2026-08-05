@@ -1,5 +1,0 @@
-C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/CMakeFiles/currentControl.dir
-C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/CMakeFiles/currentControl_test.dir
-C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/CMakeFiles/test.dir
-C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/CMakeFiles/edit_cache.dir
-C:/workspace/SimpleCurrentControl/SimpleCurrentControlWorkspace/build/CMakeFiles/rebuild_cache.dir
