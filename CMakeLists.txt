@@ -19,12 +19,15 @@ target_sources(currentControl
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS CurrentControl
-        FILES CurrentControl/simpleCurrentControl.h)
+        FILES CurrentControl/currentControl.h)
 
 find_package(GTest CONFIG REQUIRED)
 
-add_executable(currentControl_test UnitTest/currentControl_test.cpp)
-target_link_libraries(currentControl_test PRIVATE GTest::gtest GTest::gtest_main currentControl)
+add_executable(currentControl_test)
+target_sources(currentControl_test 
+    PRIVATE 
+        UnitTest/currentControl_test.cpp)
+target_link_libraries(currentControl_test PRIVATE GTest::gtest GTest::gtest_main GTest::gmock_main currentControl)
 
 enable_testing()
 #add_test(NAME currentControl_test COMMAND currentControl_test)

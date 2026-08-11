@@ -37,185 +37,6 @@ in accordance with the terms of the license agreement you entered into with Mati
   DEPENDENCIES
 ===================================================================================================*/
 #include "simpleCurrentControl.h"
-#include "commonTypes.h"
-
-/*==================================================================================================
- TYPE DEFINITIONS
-===================================================================================================*/
-typedef struct
-{
-    uint32_t proportionalGain;
-    uint32_t integralGain;
-    uint32_t pwmFrequency;
-    uint32_t clockFrequency;
-    uint32_t pwmPrescaler;
-} currentControlParameters_t;
-
-/*==================================================================================================
-  GLOBAL VARIABLE DECLARATIONS
-===================================================================================================*/
-/* Current control configuration parameters structure */
-static currentControlParameters_t g_configuration = 
-{   
-    .proportionalGain = 2000UL,
-    .integralGain = 200UL,
-    .pwmFrequency = 20161UL,
-    .clockFrequency = 160000000UL, /* CPU running at 160MHz Resolution: 1Hz. */
-    .pwmPrescaler = 1 /* no prescaling */
-};
-
-/*==================================================================================================
-  FUNCTION DECLARATIONS
-===================================================================================================*/
-/*
- * setDutyUVW:
- *  Sets the duty cycle for the three phases to the values provided in the arguments.
- *  NOTE: This is currently a placeholder function and should be implemented according to the specific hardware.
- * Parameters:
- *  uint32_t dutyPhaseA - Duty cycle for phase A
- *  uint32_t dutyPhaseB - Duty cycle for phase B
- *  uint32_t dutyPhaseC - Duty cycle for phase C
- * Side effects:
- *  Sets the duty cycles for the three phases.
- *  NOTE: The duty cycle setting is not implemented in this code and should be implemented according to the specific 
- *  requirements of the system.
- * Return value:
- *  None
- */
-static void setDutyUVW ( uint32_t dutyPhaseA, uint32_t dutyPhaseB, uint32_t dutyPhaseC );
-
-/*
- * readCurrentsFromADC:
- *  Reads the current feedback from the ADC and stores the values in the provided pointers.
- *  NOTE: This is currently a placeholder function and should be implemented according to the specific hardware.
- * Parameters:
- *  int32_t *currADC1 - Pointer to store the ADC value for the first current feedback
- *  int32_t *currADC2 - Pointer to store the ADC value for the second current feedback
- * Side effects:
- *  None
- * Return value:
- *  None
- */
-static void readCurrentsFromADC ( int32_t *currADC1, int32_t *currADC2 );
-
-/**
- * clarkeTransform:
- *  Calculates the i_alpha and i_beta currents which are the two orthogonal components of the motor current in the 
- *  stationary reference frame. They are calculated from the phase currents i_u and i_v using the following equations:
- *  iα = iU
- *  iβ = ( iU + 2iV ) / √3
- * Parameters:
- *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing U and V phase current values. 
- *  The iAlpha and iBeta values in this structure will be updated by this function.
- * Return value:
- *  None.
- * Side effects:
- *  None
- */
-static void clarkeTransform (ParkAndClarke_t *input);
-
-/*
- * calculateSine:
- *  Calculates the sine value for a given angle. 
- * Parameters:
- *  uint16_t angle - The angle for which to calculate the sine value. Represented as an unsigned 16-bit value, 
- *   where 0 corresponds to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
- * Return value:
- *  int32_t - The sine value corresponding to the input angle.
- * Side effects:
- *  None.
- */
-static int32_t calculateSine (uint16_t angle);
-
-/*
- * calculateCosine:
- *  Calculates the cosine value for a given angle. 
- * Parameters:
- *  uint16_t angle - The angle for which to calculate the cosine value. Represented as an unsigned 16-bit value, 
- *   where 0 corresponds to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
- * Return value:
- *  int32_t - The cosine value corresponding to the input angle.
- * Side effects:
- *  None.
- */
-static int32_t calculateCosine (uint16_t angle);
-
-/*
- * parkTransform:
- *  Calculates the i_d and i_q currents which are the two orthogonal components of the motor current in the rotating 
- *  reference frame.
- *  i_d = i_alpha * cos(elec ang) + i_beta * sin (elec ang)
- *  i_q = - i_alpha * sin(elec ang) + i_beta * cos (elec ang)
- * Parameters:
- *  uint16_t electricalAngle - The electrical angle of the motor, represented as an unsigned 16-bit value, where 0 corresponds
- *   to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
- *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing iAlpha and iBeta current values. The iD and iQ 
- *   values in this structure are updated by this function.
- * Return value:
- *  None.
- * Side effects:
- *  None.
- */
-static void parkTransform (ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle);
-
-/**
- * inverseParkTransform:
- * i_alpha = i_d * cos(elec ang) - i_q * sin (elec ang)
- * i_beta = i_d * sin(elec ang) + i_q * cos (elec ang)
- * \param[in] uint16_t pos -
- * \param[in,ou ( ParkAndClarke_t *parkAndClarkeStruct -
- */
-static void inverseParkTransform (ParkAndClarke_t *input, uint16_t electricalAngle);
-
-/*
- * updatePWMOutputs:
- *  Calculates the duty cycle for each phase based on the voltAlpha and voltBeta values in the parkAndClarkeStruct structure,
- *  and updates the PWM outputs accordingly. 
- * Parameters:
- *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing voltAlpha and voltBeta values. The voltAlpha 
- *  and voltBeta values in this structure are used to calculate the duty cycles for each phase.
- * Return value:
- *  None.
- * Side effects:
- *  Changes the PWM outputs by calling setDutyUVW with the calculated duty cycles for each phase.
- */
-static void updatePWMOutputs (ParkAndClarke_t *parkAndClarkeStruct);
-
-/*
- * motorElectricalAngle:
- *  Returns the motor electrical angle of rotation.
- * Parameters:
- *  None
- * Return value:
- *  uint16_t - electrical angle, represented in an unsigned 16 bit value
- *                         where 0 = 0 degrees, and UINT16_MAX = ~360 degrees
- * Side effects:
- *  None
-*/
-static uint16_t motorElectricalAngle (void);
-
-/*
- * proportionalIntegralControl:
- *  Calculates the voltage output for given current error using a proportional-integral controller.
- *  Limits the output voltage to the range [-VOLT_LIMIT, VOLT_LIMIT]. If the output voltage exceeds this range, 
- *  does not update the integrator to prevent windup.
- * Parameters:
- *  demandedCurrent - The demanded current.
- *  actualCurrent - The actual current.
- *  *outputVoltage - Pointer to the calculated voltage output. 
- *  *stopIntegrator - Pointer to a boolean indicating whether to update the integrator term.
- *  *integrator - Pointer to the integrator term.
- * Side effects:
- *  None
- * Return value:
- *  None
- */
-static void proportionalIntegralControl (
-    int32_t demandedCurrent,
-    int32_t actualCurrent, 
-    int32_t *outputVoltage,
-    bool_t* stopIntegrator,
-    int32_t* integrator);
 
 /*==================================================================================================
   FUNCTION DEFINITIONS
@@ -229,7 +50,7 @@ static void proportionalIntegralControl (
  *  iα = iU
  *  iβ = ( iU + 2iV ) / √3
  */
-void clarkeTransform (ParkAndClarke_t *parkAndClarkeStruct)
+void SimpleCurrentControl::clarkeTransform (ParkAndClarke_t *parkAndClarkeStruct)
 {
     const int64_t DIV_SQRT_3 = 0x49E6LL; /* 1/sqrt(3) in q1.15 format=0.5773315 (0x49E6 / 0x8000) */
     int32_t iBetaComponent1;
@@ -247,7 +68,7 @@ void clarkeTransform (ParkAndClarke_t *parkAndClarkeStruct)
  * calculateSine:
  *  Calculates the sine value for a given angle using a lookup table. 
  */
-static int32_t calculateSine ( uint16_t angle )
+int32_t SimpleCurrentControl::calculateSine ( uint16_t angle )
 {
     /* A position between 0 - 255 will give sin(0 -> pi/2) * 32767 */
     static const int32_t sineLookupTable[1024] =
@@ -397,7 +218,7 @@ static int32_t calculateSine ( uint16_t angle )
  * calculateCosine:
  *  Calculates the cosine value for a given angle using a lookup table. 
  */
-static int32_t calculateCosine ( uint16_t angle )
+int32_t SimpleCurrentControl::calculateCosine ( uint16_t angle )
 {
     /* A position between 0 - 255 will give cos(0 -> pi/2) * 32767 */
     static const int32_t cosineLookupTable[1024] =
@@ -551,7 +372,7 @@ parkTransform:
  The iq current is calculated using the following equation.
     iq =  − iα * sin( θe ) +  iβ * cos ( θe )
 */
-void parkTransform (ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle)
+void SimpleCurrentControl::parkTransform (ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle)
 {
     int32_t sineValue;
     int32_t cosineValue;
@@ -577,7 +398,7 @@ void parkTransform (ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAng
 /*
  * inverseParkTransform:
  */
-void inverseParkTransform ( ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle )
+void SimpleCurrentControl::inverseParkTransform ( ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle )
 {
     int32_t sineValue;
     int32_t cosineValue;
@@ -606,7 +427,7 @@ void inverseParkTransform ( ParkAndClarke_t *parkAndClarkeStruct, uint16_t elect
  *  calculates the high time for each phase using the appropriate formula. Finally, it calls setDutyUVW() to update the PWM
  *  outputs with the calculated duty cycles.
  */
-static void updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStruct )
+void SimpleCurrentControl::updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStruct )
 {
     uint32_t sector = 0; /* sector number for PWM switching */
     int64_t wX;
@@ -711,14 +532,14 @@ static void updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStruct )
     }
 
     /* Set the duty cycles for the three phases */
-    setDutyUVW ( (uint32_t)highTimePhaseA, (uint32_t)highTimePhaseB, (uint32_t)highTimePhaseC );
+    g_hardwareInterface->setDutyUVW ( (uint32_t)highTimePhaseA, (uint32_t)highTimePhaseB, (uint32_t)highTimePhaseC );
 }
 
 /*
  * proportionalIntegralControl:
  *  Simple implementation of a proportional-integral (PI) controller for current control. 
  */
-static void proportionalIntegralControl (
+void SimpleCurrentControl::proportionalIntegralControl (
     int32_t demandedCurrent,
     int32_t actualCurrent, 
     int32_t *outputVoltage,
@@ -792,20 +613,17 @@ static void proportionalIntegralControl (
  * parameters:
  *  *iU - Pointer to the ADC value for the U phase
  *  *iV - Pointer to the ADC value for the V phase
- * global variables used:
- *  g_currentOffsetU - The offset value for the U phase current
- *  g_currentOffsetV - The offset value for the V phase current
  * side effects:
  *  None
  * return value:
  *  None
  */
-static void readCurrentFeedback ( int32_t *iU, int32_t *iV )
+void SimpleCurrentControl::readCurrentFeedback ( int32_t *iU, int32_t *iV )
 {
     int32_t ADCUCurrent; /* ADC value for the U phase current */
     int32_t ADCVCurrent; /* ADC value for the V phase current */
 
-    readCurrentsFromADC ( &ADCUCurrent, &ADCVCurrent );
+    g_hardwareInterface->readCurrentsFromADC ( &ADCUCurrent, &ADCVCurrent );
     /* An ADC reading of 2048 is 0 amps, so remove this offset*/ 
     *iU = ADCUCurrent - 2048;   
     *iV = ADCVCurrent - 2048; 
@@ -814,7 +632,7 @@ static void readCurrentFeedback ( int32_t *iU, int32_t *iV )
 /*
  * currentControlLoop
  */
-void currentControlLoop (int32_t demandedCurrent, ParkAndClarke_t *parkAndClarkeStruct, currentControlMode_t mode)
+void SimpleCurrentControl::currentControlLoop (int32_t demandedCurrent, ParkAndClarke_t *parkAndClarkeStruct, currentControlMode_t mode)
 {
     static const int32_t D_AXIS_CURRENT_DEMAND = 0; /* D-axis current set-point = 0 for maximum torque */
     static bool_t stopIntegratorA = boolFALSE; /* flag to stop integratorA from increasing to prevent windup */
@@ -830,12 +648,12 @@ void currentControlLoop (int32_t demandedCurrent, ParkAndClarke_t *parkAndClarke
         integratorA = 0;
         stopIntegratorB = boolFALSE;
         integratorB = 0;
-        setDutyUVW(500, 500, 500); /* 50% duty cycle = no current to motor as the PWM is centre-aligned */
+        g_hardwareInterface->setDutyUVW(500, 500, 500); /* 50% duty cycle = no current to motor as the PWM is centre-aligned */
         demandedCurrent = 0;
     }
 
     /* read control inputs*/
-    electricalAngle = motorElectricalAngle();
+    electricalAngle = g_hardwareInterface->motorElectricalAngle();
     readCurrentFeedback (&(parkAndClarkeStruct->iU), &(parkAndClarkeStruct->iV));
     
     /* Clarke and Park transformations */
@@ -857,34 +675,4 @@ void currentControlLoop (int32_t demandedCurrent, ParkAndClarke_t *parkAndClarke
     /* Apply Inverse Park transform and update PWM outputs */
     inverseParkTransform(parkAndClarkeStruct, electricalAngle);
     updatePWMOutputs (parkAndClarkeStruct);
-}
-
-/*
- * setDutyUVW:
- *  This is a placeholder. Implementation of this function will depend on the specific hardware, PWM generation method
- *  and driver. 
- */
-static void setDutyUVW (uint32_t dutyPhaseA, uint32_t dutyPhaseB, uint32_t dutyPhaseC)
-{
-    ;
-}
-
-/*
- * readCurrentsFromADC:
- *  This is a placeholder. Implementation of this function will depend on the specific hardware and driver.
- *  being used. 
- */
-static void readCurrentsFromADC ( int32_t *currADC1, int32_t *currADC2 )
-{
-    ;
-}
-
-/*
- * motorElectricalAngle:
- *  This is a placeholder. Implementation of this function will depend on the specific hardware and driver. 
- */
-static uint16_t motorElectricalAngle (void)
-{
-    uint16_t electricalAngle;
-    return electricalAngle;
 }

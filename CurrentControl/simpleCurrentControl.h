@@ -1,83 +1,184 @@
-#ifndef __SIMPLECURRENT_CONTROL_H
+#ifndef __SIMPLE_CURRENT_CONTROL_H
 #define __SIMPLE_CURRENT_CONTROL_H
 /*==================================================================================================
 COPYRIGHT 2026 MATIMAR LTD. ALL RIGHTS RESERVED
 
-This software is protected by copyright and intellectual property laws in Bulgaria and other 
-countries. The software may be licensed and is not sold to you. You may use the software only 
+This software is protected by copyright and intellectual property laws in Bulgaria and other
+countries. The software may be licensed and is not sold to you. You may use the software only
 in accordance with the terms of the license agreement you entered into with Matimar Ltd.
-===================================================================================================*/
+
+==================================================================================================*/
 
 /*==================================================================================================
   FILE DESCRIPTION
 
-  Provides the interface for the current control module, which provides vector current control for 
-  a brushless three-phase AC motor.
-
-  The current module provides a C function currentControlLoop with an int32_t parameter 
-  demandedCurrent and void return value which sets the PWM outputs to cause the motor torque to 
-  correspond to this parameter.
+  
 
 ===================================================================================================*/
 
 /*==================================================================================================
   DEPENDENCIES
 ===================================================================================================*/
+#include "currentControl.h"
 #include "commonTypes.h"
 
 /*==================================================================================================
-  MACRO DEFINITIONS
+ TYPE DEFINITIONS
 ===================================================================================================*/
-
-/*==================================================================================================
-   TYPE DEFINITIONS
-===================================================================================================*/
-/* Structure to hold the current and voltage values in different reference frames */
 typedef struct
 {
-    int32_t iU;  /* Measured current on bridge leg U */
-    int32_t iV;  /* Measured current on bridge leg V */
-    int32_t iAlpha;  /* Park transformation of iU and iV */
-    int32_t iBeta;  /* Park transformation of iU and iV */
-    int32_t iQ;  /* Q-axis currrent - Clarke transformation of iAlpha and iBeta */
-    int32_t iD;  /* D-axis current - Clarke transformation of iAlpha and iBeta */
-    int32_t voltD;  /* D-axis voltage */
-    int32_t voltQ;  /* Q-axis voltage */
-    int32_t voltAlpha;  /* Alpha-axis voltage inverse Clarke transformation of voltD and voltQ */
-    int32_t voltBeta;  /* Beta-axis voltage inverse Clarke transformation of voltD and voltQ*/
-} ParkAndClarke_t;
+    uint32_t proportionalGain;
+    uint32_t integralGain;
+    uint32_t pwmFrequency;
+    uint32_t clockFrequency;
+    uint32_t pwmPrescaler;
+} currentControlParameters_t;
 
-/* Enumeration for current control mode */
-typedef enum
-{
-    CC_MODE_Q_AXIS, /* Normal operation - current in Q-axis (90 degrees ahead of stator)*/
-    CC_MODE_D_AXIS, /* Braking operation - current in D-axis (aligned with stator) */
-    CC_MODE_RESET   /* Reset operation - initialization */
-} currentControlMode_t;
+/*==================================================================================================
+  GLOBAL CONSTANT DECLARATIONS
+===================================================================================================*/
+/* Current control configuration parameters structure */
+static const currentControlParameters_t g_configuration = 
+{   
+    .proportionalGain = 2000UL,
+    .integralGain = 200UL,
+    .pwmFrequency = 20161UL,
+    .clockFrequency = 160000000UL, /* CPU running at 160MHz Resolution: 1Hz. */
+    .pwmPrescaler = 1 /* no prescaling */
+};
 
+class SimpleCurrentControl: public CurrentControl {
+
+private:
+    
 /*==================================================================================================
   FUNCTION DECLARATIONS
 ===================================================================================================*/
+
 /*
- * currentControlLoop
- *  This function executes one iteration of the current control loop. It reads the current feedback, 
- *  performs Clarke and Park transformations, calculates the control output using a proportional-integral controller, 
- *  applies circle limitation, performs inverse Park transformation, and updates the PWM outputs based on the calculated voltages.
+ * clarkeTransform:
+ *  Calculates the i_alpha and i_beta currents which are the two orthogonal components of the motor current in the 
+ *  stationary reference frame. They are calculated from the phase currents i_u and i_v using the following equations:
+ *  iα = iU
+ *  iβ = ( iU + 2iV ) / √3
  * Parameters:
- *  demandedCurrent - the desired peak current in the motor windings, in ADC counts
- *  parkAndClarkeStruct - pointer to a structure containing the current and voltage values in different reference frames, 
- *  which is updated throughout the function
- *  mode - the current control mode, which determines whether the d-axis or q-axis current is being controlled, or the 
- *   control loop is being reset.
- * Side effects:
- *  Updates the PWM outputs to control the motor current.
- *  Updates the global variable g_peakCurrent with the current peak current.
- *  Updates the integrator values and stopIntegrator flags used in the proportional-integral controller.
+ *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing U and V phase current values. 
+ *  The iAlpha and iBeta values in this structure will be updated by this function.
  * Return value:
  *  None.
- * Global variables used:
+ * Side effects:
+ *  None
+ */
+void clarkeTransform (ParkAndClarke_t *input);
+
+/*
+ * calculateSine:
+ *  Calculates the sine value for a given angle. 
+ * Parameters:
+ *  uint16_t angle - The angle for which to calculate the sine value. Represented as an unsigned 16-bit value, 
+ *   where 0 corresponds to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
+ * Return value:
+ *  int32_t - The sine value corresponding to the input angle.
+ * Side effects:
  *  None.
  */
-void currentControlLoop (int32_t demandCurrent, ParkAndClarke_t *parkAndClarkeStruct, currentControlMode_t mode);
+int32_t calculateSine (uint16_t angle);
+
+/*
+ * calculateCosine:
+ *  Calculates the cosine value for a given angle. 
+ * Parameters:
+ *  uint16_t angle - The angle for which to calculate the cosine value. Represented as an unsigned 16-bit value, 
+ *   where 0 corresponds to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
+ * Return value:
+ *  int32_t - The cosine value corresponding to the input angle.
+ * Side effects:
+ *  None.
+ */
+int32_t calculateCosine (uint16_t angle);
+
+/*
+ * parkTransform:
+ *  Calculates the i_d and i_q currents which are the two orthogonal components of the motor current in the rotating 
+ *  reference frame.
+ *  i_d = i_alpha * cos(elec ang) + i_beta * sin (elec ang)
+ *  i_q = - i_alpha * sin(elec ang) + i_beta * cos (elec ang)
+ * Parameters:
+ *  uint16_t electricalAngle - The electrical angle of the motor, represented as an unsigned 16-bit value, where 0 corresponds
+ *   to 0 degrees and UINT16_MAX corresponds to approximately 360 degrees. 
+ *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing iAlpha and iBeta current values. The iD and iQ 
+ *   values in this structure are updated by this function.
+ * Return value:
+ *  None.
+ * Side effects:
+ *  None.
+ */
+void parkTransform (ParkAndClarke_t *parkAndClarkeStruct, uint16_t electricalAngle);
+
+/**
+ * inverseParkTransform:
+ * i_alpha = i_d * cos(elec ang) - i_q * sin (elec ang)
+ * i_beta = i_d * sin(elec ang) + i_q * cos (elec ang)
+ * \param[in] uint16_t pos -
+ * \param[in,ou ( ParkAndClarke_t *parkAndClarkeStruct -
+ */
+void inverseParkTransform (ParkAndClarke_t *input, uint16_t electricalAngle);
+
+/*
+ * updatePWMOutputs:
+ *  Calculates the duty cycle for each phase based on the voltAlpha and voltBeta values in the parkAndClarkeStruct structure,
+ *  and updates the PWM outputs accordingly. 
+ * Parameters:
+ *  ParkAndClarke_t *parkAndClarkeStruct - Pointer to structure containing voltAlpha and voltBeta values. The voltAlpha 
+ *  and voltBeta values in this structure are used to calculate the duty cycles for each phase.
+ * Return value:
+ *  None.
+ * Side effects:
+ *  Changes the PWM outputs by calling setDutyUVW with the calculated duty cycles for each phase.
+ */
+void updatePWMOutputs (ParkAndClarke_t *parkAndClarkeStruct);
+
+/*
+ * proportionalIntegralControl:
+ *  Calculates the voltage output for given current error using a proportional-integral controller.
+ *  Limits the output voltage to the range [-VOLT_LIMIT, VOLT_LIMIT]. If the output voltage exceeds this range, 
+ *  does not update the integrator to prevent windup.
+ * Parameters:
+ *  demandedCurrent - The demanded current.
+ *  actualCurrent - The actual current.
+ *  *outputVoltage - Pointer to the calculated voltage output. 
+ *  *stopIntegrator - Pointer to a boolean indicating whether to update the integrator term.
+ *  *integrator - Pointer to the integrator term.
+ * Side effects:
+ *  None
+ * Return value:
+ *  None
+ */
+void proportionalIntegralControl (
+    int32_t demandedCurrent,
+    int32_t actualCurrent, 
+    int32_t *outputVoltage,
+    bool_t* stopIntegrator,
+    int32_t* integrator);
+
+/*
+* readCurrentFeedback:
+*  Reads the current feedback from the ADC for the U and V phases.
+* parameters:
+*  *iU - Pointer to the ADC value for the U phase. 
+*  *iV - Pointer to the ADC value for the V phase
+* side effects:
+*  None
+* return value:
+*  None
+*/
+void readCurrentFeedback ( int32_t *iU, int32_t *iV );
+
+public:
+SimpleCurrentControl(HardwareInterface* hardwareInterface) : CurrentControl(hardwareInterface) {};
+~SimpleCurrentControl() override = default;
+void currentControlLoop 
+              (int32_t demandCurrent, ParkAndClarke_t *parkAndClarkeStruct, currentControlMode_t mode);
+};
 
 #endif /* __SIMPLE_CURRENT_CONTROL_H */
