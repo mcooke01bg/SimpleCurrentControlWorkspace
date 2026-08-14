@@ -1,3 +1,6 @@
 build/
 ScicosModel/Demux.txt
 ScicosModel/Output.txt
+ScicosModel/Inverse.txt
+ScicosModel/PWM.txt
+Testing/Temporary/LastTest.log
