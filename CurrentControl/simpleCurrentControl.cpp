@@ -410,6 +410,8 @@ void SimpleCurrentControl::inverseParkTransform ( ParkAndClarke_t *parkAndClarke
     sineValue = calculateSine(electricalAngle);
     cosineValue = calculateCosine(electricalAngle);
 
+    parkAndClarkeStruct->sineValue = sineValue;
+
     vAlphaComponent1 = (parkAndClarkeStruct->voltQ * sineValue) / 32768;
     vAlphaComponent2 = (parkAndClarkeStruct->voltD * cosineValue) / 32768;
 
@@ -463,7 +465,11 @@ void SimpleCurrentControl::updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStru
     wY = (wUBeta + wUAlpha) / 2;
     wZ = (wUBeta - wUAlpha) / 2;
 
-    /* Calculate the sector based on the wX and wZ values */
+    parkAndClarkeStruct->wX = wX;
+    parkAndClarkeStruct->wY = wY;
+    parkAndClarkeStruct->wZ = wZ;
+
+    /* Calculate the sector based on the wX, wY, and wZ values */
     if (wY < (int64_t)0)
     {
         if (wZ < (int64_t)0)
@@ -494,6 +500,7 @@ void SimpleCurrentControl::updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStru
             sector = 1;
         }
     }
+    parkAndClarkeStruct->sector = sector;
 
     switch (sector)
     {
@@ -503,7 +510,7 @@ void SimpleCurrentControl::updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStru
             highTimePhaseA =
                 (int32_t)((T / 8) + ((((T + wX) - wZ) / 2) / 131072));
             highTimePhaseB = (int32_t)(highTimePhaseA + wZ / 131072);
-            highTimePhaseC = (int32_t)(highTimePhaseC - wX / 131072);
+            highTimePhaseC = (int32_t)(highTimePhaseB - wX / 131072);
             break;
         }
         case 2:
@@ -520,8 +527,8 @@ void SimpleCurrentControl::updatePWMOutputs ( ParkAndClarke_t *parkAndClarkeStru
         {
             highTimePhaseA =
                 (int32_t)((T / 8) + ((((T - wX) + wY) / 2) / 131072));
-            highTimePhaseB = (int32_t)(highTimePhaseA - wY / 131072);
-            highTimePhaseC = (int32_t)(highTimePhaseC + wX / 131072);
+            highTimePhaseC = (int32_t)(highTimePhaseA - wY / 131072);
+            highTimePhaseB = (int32_t)(highTimePhaseC + wX / 131072);
             break;
         }
         default: /* This is a fault and should never happen! */
@@ -648,7 +655,7 @@ void SimpleCurrentControl::currentControlLoop (int32_t demandedCurrent, ParkAndC
         integratorA = 0;
         stopIntegratorB = boolFALSE;
         integratorB = 0;
-        g_hardwareInterface->setDutyUVW(500, 500, 500); /* 50% duty cycle = no current to motor as the PWM is centre-aligned */
+        g_hardwareInterface->setDutyUVW(1984, 1984, 1984); /* 50% duty cycle = no current to motor as the PWM is centre-aligned */
         demandedCurrent = 0;
     }
 

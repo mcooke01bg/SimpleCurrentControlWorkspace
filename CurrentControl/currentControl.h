@@ -46,6 +46,14 @@ typedef struct
     int32_t voltQ;  /* Q-axis voltage */
     int32_t voltAlpha;  /* Alpha-axis voltage inverse Clarke transformation of voltD and voltQ */
     int32_t voltBeta;  /* Beta-axis voltage inverse Clarke transformation of voltD and voltQ*/
+    int32_t sector;  /* Sector of the space vector modulation */
+    int64_t wX;
+    int64_t wY;
+    int64_t wZ;
+    int64_t wUAlpha;
+    int64_t wUBeta;
+    int32_t sineValue;  /* Sine of the electrical angle */
+
 } ParkAndClarke_t;
 
 /* Enumeration for current control mode */
