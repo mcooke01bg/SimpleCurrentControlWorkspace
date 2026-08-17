@@ -1,3 +1,22 @@
+/*==================================================================================================
+COPYRIGHT 2026 MATIMAR LTD. ALL RIGHTS RESERVED
+
+This software is protected by copyright and intellectual property laws in Bulgaria and other
+countries. The software may be licensed and is not sold to you. You may use the software only
+in accordance with the terms of the license agreement you entered into with Matimar Ltd.
+
+==================================================================================================*/
+
+/*==================================================================================================
+  FILE DESCRIPTION
+
+  Contains a test harness for the SimpleCurrentControl class.  Uses Google Test framework for unit testing.
+
+===================================================================================================*/
+
+/*==================================================================================================
+  DEPENDENCIES
+===================================================================================================*/
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "..\CurrentControl\simpleCurrentControl.h"
@@ -9,9 +28,15 @@ using ::testing::AtLeast;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 
-// Test for currentControlLoop function
+/*==================================================================================================
+  GLOBAL DECLARATIONS
+===================================================================================================*/
 ParkAndClarke_t testStruct = {0};
 
+/*==================================================================================================
+  TESTS
+===================================================================================================*/
+// Test for currentControlLoop function
 TEST(currentControl_test, Test1) {
 
     int i = 0;

@@ -12,7 +12,11 @@ in accordance with the terms of the license agreement you entered into with Mati
 /*==================================================================================================
   FILE DESCRIPTION
 
+  Definition of the SimpleCurrentControl class, which implements a simple current control algorithm 
+  for motor control applications.
   
+  The class inherits from the CurrentControl base class and provides implementations for the current 
+  control loop, Clarke and Park transformations, proportional-integral control, and PWM output updates.
 
 ===================================================================================================*/
 
